@@ -1,0 +1,13 @@
+{
+  "name": "loop-prompt",
+  "version": "1.0.0",
+  "description": "Expand a prompt template over lists, directories, or git files—one Agent chat per item. Optional MCP for next-item handoff across chats.",
+  "author": {
+    "name": "loop-prompt contributors"
+  },
+  "keywords": ["loop", "prompt", "batch", "agent", "template"],
+  "logo": "assets/logo.svg",
+  "repository": "https://github.com/florianduport/loop-cursor-plugin",
+  "license": "MIT",
+  "mcpServers": ".mcp.json"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "loop-prompt",
+  "version": "1.0.0",
+  "description": "Expand a prompt template over lists, directories, or git files—one Agent chat per item. Optional MCP for next-item handoff across chats.",
+  "license": "MIT",
+  "repository": "https://github.com/florianduport/loop-cursor-plugin"
+}

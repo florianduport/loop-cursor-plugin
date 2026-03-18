@@ -1,0 +1,12 @@
+---
+description: When the user is running a multi-item prompt loop, prefer one scope per Agent session unless they explicitly ask to batch.
+alwaysApply: false
+---
+
+# Loop discipline
+
+If the user mentions **loop**, **prompt loop**, **per-file**, **batch prompts**, or **`.loop/prompts`**:
+
+1. Treat **one manifest item** (one numbered `.md` under `.loop/prompts/`) as **one chat’s work** unless they ask otherwise.
+2. Do not combine multiple loop items into a single response when they asked for isolated runs.
+3. After completing one item, tell them to open the **next** prompt file or a **new** chat for the next item (or use MCP `loop_next_prompt` if available).
