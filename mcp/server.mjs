@@ -92,20 +92,32 @@ mcpServer.registerTool(
       };
     }
     const items = m.items;
+    const total = items.length;
     const done = items.filter((i) => i.done).length;
+    const remaining = total - done;
     const next = items.find((i) => !i.done);
-    const text = JSON.stringify(
-      {
-        total: items.length,
-        done,
-        remaining: items.length - done,
-        nextIndex: next ? next.index : null,
-        nextFile: next ? next.file : null,
-      },
-      null,
-      2
-    );
-    return { content: [{ type: "text", text }] };
+    const lines = [
+      "========== LOOP STATUS ==========",
+      `Progress: ${done} done / ${total} total (${remaining} remaining)`,
+      next
+        ? `Next up:  item #${next.index} of ${total}  →  ${next.file}`
+        : "Next up:  (none — loop complete)",
+      "=================================",
+      "",
+      "(Machine-readable)",
+      JSON.stringify(
+        {
+          total,
+          done,
+          remaining,
+          nextIndex: next ? next.index : null,
+          nextFile: next ? next.file : null,
+        },
+        null,
+        2
+      ),
+    ];
+    return { content: [{ type: "text", text: lines.join("\n") }] };
   }
 );
 
@@ -177,7 +189,12 @@ mcpServer.registerTool(
     if (input.force) args.push("--force");
     if (input.confirm) args.push("--confirm");
     const r = runExpand(root, args);
-    const msg = r.ok ? r.stdout || "OK" : `${r.stderr}\n${r.stdout}`.trim() || `exit ${r.status}`;
+    const tail = r.ok
+      ? "\n\n---\nNext: call loop_next_prompt(projectRoot) to fetch item 1 of N, or open .loop/prompts/001-*.md manually."
+      : "";
+    const msg = r.ok
+      ? `${r.stdout || "OK"}${tail}`
+      : `${r.stderr}\n${r.stdout}`.trim() || `exit ${r.status}`;
     return {
       content: [{ type: "text", text: msg }],
       isError: !r.ok,
@@ -203,10 +220,24 @@ mcpServer.registerTool(
         isError: true,
       };
     }
-    const next = m.items.find((i) => !i.done);
+    const items = m.items;
+    const total = items.length;
+    const done = items.filter((i) => i.done).length;
+    const next = items.find((i) => !i.done);
     if (!next) {
       return {
-        content: [{ type: "text", text: "All items are marked done. Reset manifest or run loop_expand again." }],
+        content: [
+          {
+            type: "text",
+            text: [
+              "========== LOOP COMPLETE ==========",
+              `All ${total} items are marked done.`,
+              "No further loop_next_prompt calls needed.",
+              "Run loop_expand again to start a new loop.",
+              "====================================",
+            ].join("\n"),
+          },
+        ],
       };
     }
     const mdPath = path.join(loopDir(root), "prompts", next.file);
@@ -217,15 +248,27 @@ mcpServer.registerTool(
       };
     }
     const body = fs.readFileSync(mdPath, "utf8");
-    const meta = JSON.stringify(
-      { index: next.index, file: next.file, item: next.item, relpath: next.relpath },
-      null,
-      2
-    );
+    const step = done + 1;
+    const itemLabel = next.relpath ?? next.item ?? String(next.index);
+    const text = [
+      "================================================================================",
+      `  LOOP  —  ITEM ${step} OF ${total}  (manifest index ${next.index})`,
+      `  File: ${next.file}`,
+      `  Scope: ${itemLabel}`,
+      "================================================================================",
+      "",
+      ">>> EXECUTE ONLY THIS PROMPT FOR THIS STEP:",
+      "",
+      body.trimEnd(),
+      "",
+      "================================================================================",
+      ">>> WHEN FINISHED: call loop_mark_done(projectRoot, index: " +
+        next.index +
+        "), then loop_next_prompt for the next item.",
+      "================================================================================",
+    ].join("\n");
     return {
-      content: [
-        { type: "text", text: `--- meta ---\n${meta}\n--- prompt ---\n${body}` },
-      ],
+      content: [{ type: "text", text }],
     };
   }
 );
@@ -258,8 +301,29 @@ mcpServer.registerTool(
       };
     }
     writeManifest(root, items);
+    const total = items.length;
+    const doneNow = items.filter((i) => i.done).length;
+    const left = total - doneNow;
+    const lines =
+      left === 0
+        ? [
+            "========== ITEM MARKED DONE ==========",
+            `Finished item ${index} of ${total}.`,
+            "",
+            "*** LOOP COMPLETE ***",
+            `All ${total} items done. Stop calling loop_next_prompt.`,
+            "======================================",
+          ]
+        : [
+            "========== ITEM MARKED DONE ==========",
+            `Finished item ${index} of ${total}.`,
+            `Progress: ${doneNow}/${total} complete  |  ${left} remaining`,
+            "",
+            `Next: call loop_next_prompt(projectRoot) for item ${doneNow + 1} of ${total}.`,
+            "======================================",
+          ];
     return {
-      content: [{ type: "text", text: `Marked index ${index} as done.` }],
+      content: [{ type: "text", text: lines.join("\n") }],
     };
   }
 );

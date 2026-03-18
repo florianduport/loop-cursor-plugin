@@ -97,12 +97,38 @@ node scripts/loop-expand.mjs \
 - **\>500 items** without `--confirm` → refused; add `--confirm` after reviewing the count.
 - **Non-empty output dir** without `--force` → error until you `--force` or clear `*.md`.
 
-## Workflow: one chat per item
+## Workflow: one chat per item (Cursor IDE)
 
 1. Run `loop-expand` from the app repo root.
 2. Open **new Agent chat** → paste full contents of `.loop/prompts/001-….md` (or `@` that file).
 3. Finish that scope only.
 4. **New chat** for `002-….md`, and so on.
+
+## Command: expand + run in one go
+
+**`/prompt-loop`** tells the agent to expand, then **run every item without you asking again**.
+
+- **In Cursor (recommended):** enable the **loop-prompt** MCP server. The agent will **`loop_next_prompt` → execute → `loop_mark_done`** in the same chat until the loop is complete.
+- **With Claude Code CLI:** the agent can run **`scripts/loop-run-claude.sh`** instead when MCP isn’t available or you ask for the terminal.
+
+Say **expand only** if you only want the `.loop/prompts/*.md` files.
+
+## Run prompts automatically one after another (Claude Code CLI)
+
+The IDE cannot open N chats for you. In the terminal, **Claude Code** can run each prompt as its own non-interactive session with [`claude -p`](https://code.claude.com/docs/en/headless):
+
+```bash
+cd /path/to/your-project   # same cwd you used for loop-expand
+bash /path/to/loop-cursor-plugin/scripts/loop-run-claude.sh
+```
+
+Optional: pass extra `claude` flags (tool permissions, model, etc.):
+
+```bash
+bash .../loop-run-claude.sh .loop/prompts --allowedTools Read,Write,Bash
+```
+
+Preview without running: `DRY_RUN=1 bash .../loop-run-claude.sh`.
 
 ## Optional MCP
 

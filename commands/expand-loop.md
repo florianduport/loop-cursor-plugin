@@ -1,9 +1,11 @@
 ---
 name: expand-loop
-description: Generate per-item Agent prompts from a template (list, directory walk, or git files). Run the loop-expand script then process prompts one chat at a time.
+description: Generate per-item prompts only (no auto terminal run). For expand + sequential Claude CLI runs, use prompt-loop instead.
 ---
 
-# Expand prompt loop
+# Expand prompt loop (generate only)
+
+Use **`prompt-loop`** if the user wants **expand and then automatic** `loop-run-claude.sh`. This command is for **creating** `.loop/prompts/` only.
 
 ## 1. Choose source
 
@@ -32,6 +34,8 @@ Use `--template-file path` for long templates. Add `--confirm` if item count can
 4. Repeat with `002-…`, `003-…`, etc.
 
 If MCP **loop-prompt** is enabled: call `loop_next_prompt` with `projectRoot` set to the workspace root; after each chat call `loop_mark_done` with that item’s index.
+
+**Claude Code (terminal):** run `bash <plugin>/scripts/loop-run-claude.sh` from the project root to execute every `.md` prompt in order via `claude -p` (stacked runs, no manual handoff).
 
 ## 4. Check progress
 

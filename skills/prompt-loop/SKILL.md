@@ -1,63 +1,61 @@
 ---
 name: prompt-loop
-description: Expand one prompt across many items (list, folder, or git files) so the user runs one Cursor Agent chat per item. Use when batching refactors, page-by-page audits, or per-file tasks to avoid condensed context and missed files.
+description: Expand a template over a list, directory, or git files; then run every item automatically. In Cursor (loop-prompt MCP): loop_next_prompt → execute → loop_mark_done in one chat. Alternative: loop-run-claude.sh for Claude Code CLI.
 ---
 
 # Prompt loop (loop-prompt plugin)
 
 ## Goal
 
-Run **one isolated Agent chat per item** (value or file). Do not merge many files into a single “do everything” request when reliability matters.
+**One item per step** for reliability; **no manual “run the loop”** after expand when using **`/prompt-loop`**.
+
+| Where | How to run all items after expand |
+|-------|-----------------------------------|
+| **Cursor IDE** (default) | **MCP:** `loop_next_prompt` → do the prompt → `loop_mark_done` → repeat until **LOOP COMPLETE**. Same Agent chat. |
+| **Claude Code terminal** | `bash <plugin>/scripts/loop-run-claude.sh <projectRoot>/.loop/prompts` |
+| **Manual** | New chat per `.md` under `.loop/prompts/` |
 
 ## Placeholders
 
-In your template string or file:
-
 | Placeholder | Meaning |
 |-------------|---------|
-| `{{item}}` | List value, or absolute file path (dir/git mode) |
+| `{{item}}` | List value or absolute path (file modes) |
 | `{{index}}` | 1-based index |
-| `{{path}}` | Same as absolute path in file modes |
-| `{{relpath}}` | Path relative to `--dir` root or repo-relative for git |
-| `{{basename}}` | File name only |
+| `{{path}}` | Absolute path |
+| `{{relpath}}` | Relative path |
+| `{{basename}}` | File name |
 
-Literal `{{`: use `\{{` in the template.
+Literal `{{`: `\{{`.
 
-## CLI (primary)
-
-From the **workspace root** (your app repo), run the expander shipped with this plugin:
+## Expand (CLI or MCP)
 
 ```bash
-node /path/to/loop-prompt-plugin/scripts/loop-expand.mjs \
-  --template 'Refactor exports in {{relpath}}' \
-  --dir ./src --glob '**/*.ts' --force
+node <plugin>/scripts/loop-expand.mjs \
+  --template '...' \
+  --values-file ./list.md --force
 ```
 
-Other sources:
+Also: `--dir`, `--git-path`, MCP **`loop_expand`**. Over **500** items → `--confirm`.
 
-- **List:** `--values 'a,b,c'` or `--values-file lines.txt` or JSON array file
-- **Git tracked:** `--git-path src/` with optional `--glob '**/*.tsx'`
+## Cursor: full auto-run (MCP)
 
-Outputs:
+Requires **loop-prompt** MCP enabled in Cursor.
 
-- `.loop/prompts/001-….md` — paste into a **new** Agent chat (or `@` the file)
-- `.loop/manifest.json` — progress checklist (`done` flags if using MCP)
+1. **`loop_expand`** (or CLI expand).
+2. Loop: **`loop_next_prompt(projectRoot)`** → execute only that prompt → **`loop_mark_done(projectRoot, index)`** until the tool reports complete.
 
-If there are more than **500** items, add `--confirm`.
+Banner lines **`LOOP — ITEM k OF n`** and **`ITEM MARKED DONE`** show progress.
 
-## MCP (optional)
+## Claude Code CLI stack
 
-If the **loop-prompt** MCP server is enabled in Cursor:
+```bash
+bash <plugin>/scripts/loop-run-claude.sh .loop/prompts --allowedTools Read,Write,Bash
+```
 
-- `loop_expand` — same as CLI (pass `projectRoot` + template + source fields)
-- `loop_status` — counts done / remaining
-- `loop_next_prompt` — next incomplete item’s full prompt text
-- `loop_mark_done` — mark an index complete after that chat finishes
-
-Use **one chat per item**: after finishing item *n*, open a **new** chat, call `loop_next_prompt` (or open the next `.md` file).
+See [headless `-p`](https://code.claude.com/docs/en/headless).
 
 ## Agent discipline
 
-1. After expanding, work **only** from the prompt in `001-….md` (or the MCP-returned text) for that session.
-2. Do not silently skip items; if blocked, say so and stop.
-3. For the next item, **new chat** (or explicitly continue only if the user asked to batch).
+1. For **Cursor `/prompt-loop`**: after expand, **run path A (MCP loop)** first; use terminal script only if MCP missing or user wants CLI.
+2. One prompt body per iteration—don’t batch multiple manifest items into one tool response unless the user asked.
+3. If stuck on one item, say so and stop rather than skipping silently.
